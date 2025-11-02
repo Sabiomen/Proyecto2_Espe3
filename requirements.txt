@@ -1,0 +1,13 @@
+flask>=2.2
+gunicorn
+torch>=1.13
+facenet-pytorch
+scikit-learn
+pillow==12.0.0
+numpy==2.3.0
+joblib
+python-dotenv
+opencv-python
+matplotlib
+pytest
+tqdm
