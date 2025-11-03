@@ -18,7 +18,7 @@ MODEL_VERSION = os.getenv('MODEL_VERSION', 'me-verifier-v1')
 MAX_MB = float(os.getenv('MAX_MB', '5'))
 ALLOWED = {'image/jpeg', 'image/png'}
 
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__, template_folder='template')
 
 # Load detector, model, and classifier
 mtcnn = MTCNN(keep_all=True, device='cpu')
