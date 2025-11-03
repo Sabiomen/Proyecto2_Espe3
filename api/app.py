@@ -41,6 +41,48 @@ def home():
 def healthz():
     return jsonify({'status': 'ok', 'model_version': MODEL_VERSION})
 
+def process_image(file):
+    """Procesa una imagen y devuelve el dict de resultado o error."""
+    start = time.time()
+    if file.mimetype not in ALLOWED:
+        return {'error': 'solo image/jpeg o image/png'}, 400
+
+    # size check
+    file.seek(0, 2)
+    size = file.tell() / (1024 * 1024)
+    if size > MAX_MB:
+        return {'error': f'archivo demasiado grande > {MAX_MB} MB'}, 400
+    file.seek(0)
+    try:
+        img = read_image(file)
+    except Exception:
+        return {'error': 'imagen no legible'}, 400
+
+    boxes, probs = mtcnn.detect(img)
+    if boxes is None or len(boxes) == 0:
+        return {'error': 'no_face_detected'}, 400
+
+    areas = [(b[2]-b[0])*(b[3]-b[1]) for b in boxes]
+    idx = int(max(range(len(areas)), key=lambda i: areas[i]))
+    box = boxes[idx].astype(int)
+    crop = img.crop((box[0], box[1], box[2], box[3])).resize((160,160))
+    arr = np.asarray(crop).transpose((2,0,1)) / 255.0
+    tensor = torch.tensor(arr, dtype=torch.float32).unsqueeze(0)
+    with torch.no_grad():
+        emb = inception(tensor).cpu().numpy()
+    emb_s = scaler.transform(emb)
+    score = float(clf.predict_proba(emb_s)[0,1])
+    is_me = bool(score >= THRESHOLD)
+    timing_ms = (time.time() - start) * 1000
+
+    return {
+        'model_version': MODEL_VERSION,
+        'is_me': is_me,
+        'score': round(score, 3),
+        'threshold': THRESHOLD,
+        'timing_ms': round(timing_ms, 3)
+    }, 200
+
 
 @app.route('/verify', methods=['POST'])
 def verify():
@@ -93,26 +135,22 @@ def verify():
 
 @app.route('/verify_ui', methods=['POST'])
 def verify_ui():
-    """Maneja la verificación desde el formulario HTML."""
     if 'image' not in request.files:
-        return render_template('index.html', error="Por favor, selecciona una imagen.")
+        return render_template('index.html', error="Debe subir una imagen.")
 
-    f = request.files['image']
-    if f.mimetype not in ALLOWED:
-        return render_template('index.html', error="Solo se permiten imágenes JPEG o PNG.")
+    result, status = process_image(request.files['image'])
 
-    # Llamamos internamente a la lógica de verificación
-    result = verify().json
-
+    # Si hubo error en la verificación
     if 'error' in result:
         return render_template('index.html', error=result['error'])
-    else:
-        return render_template(
-            'index.html',
-            is_me=result['is_me'],
-            score=result['score'],
-            threshold=result['threshold']
-        )
+
+    # Si la verificación fue exitosa
+    return render_template('index.html', 
+                           result=result,
+                           is_me=result['is_me'],
+                           score=result['score'],
+                           threshold=result['threshold'],
+                           timing=result['timing_ms'])
 
 
 if __name__ == '__main__':
