@@ -1,0 +1,63 @@
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Verificador Facial</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f6fa;
+            text-align: center;
+            padding: 50px;
+        }
+        h1 { color: #2f3640; }
+        form {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input[type=file] {
+            margin: 15px 0;
+        }
+        button {
+            background-color: #4cd137;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background-color: #44bd32; }
+        .result {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Verificador de Identidad</h1>
+
+    <form action="/verify_ui" method="post" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/png, image/jpeg" required>
+        <br>
+        <button type="submit">Verificar</button>
+    </form>
+
+    {% if error %}
+    <div class="result error">{{ error }}</div>
+    {% endif %}
+
+    {% if is_me is defined %}
+    <div class="result">
+        <strong>Resultado:</strong> 
+        {% if is_me %}
+            ✅ Es tu rostro (score: {{ score }}, umbral: {{ threshold }})
+        {% else %}
+            ❌ No coincide (score: {{ score }}, umbral: {{ threshold }})
+        {% endif %}
+    </div>
+    {% endif %}
+</body>
+</html>
