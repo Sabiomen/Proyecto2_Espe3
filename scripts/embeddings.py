@@ -20,24 +20,35 @@ def main(root_dir, out_embeddings, out_csv):
     model = InceptionResnetV1(pretrained='vggface2').eval()
     embeddings = []
     rows = []
-    for label_folder in ['me', 'not_me']:
+
+    # (nombre_carpeta, etiqueta)
+    label_folders = [
+        ('unknown', 2),
+        ('user_1', 1),
+        ('user_2', 0),
+    ]
+
+    for label_folder, label in label_folders:
         folder = Path(root_dir) / label_folder
         if not folder.exists():
             continue
-        for p in tqdm(list(folder.glob('*'))):
+        for p in tqdm(list(folder.glob('*')), desc=f'Procesando {label_folder}'):
             try:
                 emb = image_to_embedding(model, p)
             except Exception as e:
                 print("skip", p, e)
                 continue
             embeddings.append(emb)
-            rows.append([str(p), 1 if label_folder=='me' else 0])
+            rows.append([str(p), label])
+
     X = np.stack(embeddings)
     np.save(out_embeddings, X)
+
     with open(out_csv, 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['path','label'])
         writer.writerows(rows)
+
     print("Saved", out_embeddings, out_csv)
 
 if __name__ == "__main__":
